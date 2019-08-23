@@ -1,0 +1,6 @@
+{
+    "project_id" : "Flink",
+    "conduit_uri" : "https://phabricator.d.xiaomi.net/",
+    "base" : "git:merge-base(origin/1.9.0-mdh1.9.0.0-SNAPSHOT), arc:prompt",
+    "arc.land.onto.default": "1.9.0-mdh1.9.0.0-SNAPSHOT"
+}
