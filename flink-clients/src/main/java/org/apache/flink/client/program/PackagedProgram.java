@@ -25,6 +25,8 @@ import org.apache.flink.configuration.ConfigConstants;
 import org.apache.flink.optimizer.Optimizer;
 import org.apache.flink.optimizer.dag.DataSinkNode;
 import org.apache.flink.optimizer.plandump.PlanJSONDumpGenerator;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.CoreOptions;
 import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.util.InstantiationUtil;
 
@@ -117,7 +119,7 @@ public class PackagedProgram {
 	 *         may be a missing / wrong class or manifest files.
 	 */
 	public PackagedProgram(File jarFile, String... args) throws ProgramInvocationException {
-		this(jarFile, Collections.<URL>emptyList(), null, args);
+		this(jarFile, Collections.<URL>emptyList(), null, null, null, args);
 	}
 
 	/**
@@ -137,7 +139,7 @@ public class PackagedProgram {
 	 *         may be a missing / wrong class or manifest files.
 	 */
 	public PackagedProgram(File jarFile, List<URL> classpaths, String... args) throws ProgramInvocationException {
-		this(jarFile, classpaths, null, args);
+		this(jarFile, classpaths, null, null, null, args);
 	}
 
 	/**
@@ -158,7 +160,7 @@ public class PackagedProgram {
 	 *         may be a missing / wrong class or manifest files.
 	 */
 	public PackagedProgram(File jarFile, @Nullable String entryPointClassName, String... args) throws ProgramInvocationException {
-		this(jarFile, Collections.<URL>emptyList(), entryPointClassName, args);
+		this(jarFile, Collections.<URL>emptyList(), entryPointClassName, null, null, args);
 	}
 
 	/**
@@ -173,6 +175,12 @@ public class PackagedProgram {
 	 * @param entryPointClassName
 	 *        Name of the class which generates the plan. Overrides the class defined
 	 *        in the jar file manifest
+	 * @param classLoaderResolverOrder
+	 *        The resolver order when loading the main class in user jar
+	 * @param alwaysParentFirstLoaderPatterns
+	 *        Patterns indicate to load class with parent loader first
+	 * @param conf
+	 *        flink configuration which are used to decide classloader resolver order and etc.
 	 * @param args
 	 *        Optional. The arguments used to create the pact plan, depend on
 	 *        implementation of the pact plan. See getDescription().
@@ -180,7 +188,13 @@ public class PackagedProgram {
 	 *         This invocation is thrown if the Program can't be properly loaded. Causes
 	 *         may be a missing / wrong class or manifest files.
 	 */
-	public PackagedProgram(File jarFile, List<URL> classpaths, @Nullable String entryPointClassName, String... args) throws ProgramInvocationException {
+	public PackagedProgram(
+		File jarFile,
+		List<URL> classpaths,
+		@Nullable String entryPointClassName,
+		String classLoaderResolverOrder,
+		String[] alwaysParentFirstLoaderPatterns,
+		String... args) throws ProgramInvocationException {
 		// Whether the job is a Python job.
 		isPython = entryPointClassName != null && (entryPointClassName.equals("org.apache.flink.client.python.PythonDriver")
 			|| entryPointClassName.equals("org.apache.flink.client.python.PythonGatewayServer"));
