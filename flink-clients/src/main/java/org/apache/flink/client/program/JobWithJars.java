@@ -19,6 +19,11 @@
 package org.apache.flink.client.program;
 
 import org.apache.flink.api.common.Plan;
+<<<<<<< HEAD
+=======
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.CoreOptions;
+>>>>>>> b071cbf... Fix style
 import org.apache.flink.runtime.execution.librarycache.FlinkUserCodeClassLoaders;
 
 import java.io.File;
