@@ -221,7 +221,19 @@ public class PackagedProgram {
 		// now that we have an entry point, we can extract the nested jar files (if any)
 		this.extractedTempLibraries = jarFileUrl == null ? Collections.emptyList() : extractContainedLibraries(jarFileUrl);
 		this.classpaths = classpaths;
-		this.userCodeClassLoader = JobWithJars.buildUserCodeClassLoader(getAllLibraries(), classpaths, getClass().getClassLoader());
+
+		if (classLoaderResolverOrder == null) {
+			classLoaderResolverOrder = CoreOptions.CLASSLOADER_RESOLVE_ORDER.defaultValue();
+		}
+		if (alwaysParentFirstLoaderPatterns == null) {
+			alwaysParentFirstLoaderPatterns = CoreOptions.getParentFirstLoaderPatterns(new Configuration());
+		}
+		this.userCodeClassLoader = JobWithJars.buildUserCodeClassLoader(
+			getAllLibraries(),
+			classpaths,
+			getClass().getClassLoader(),
+			classLoaderResolverOrder,
+			alwaysParentFirstLoaderPatterns);
 
 		// load the entry point class
 		this.mainClass = loadMainClass(entryPointClassName, userCodeClassLoader);
