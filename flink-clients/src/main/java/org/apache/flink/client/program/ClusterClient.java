@@ -22,6 +22,7 @@ import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobSubmissionResult;
 import org.apache.flink.api.common.Plan;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.optimizer.CompilerException;
@@ -35,6 +36,7 @@ import org.apache.flink.optimizer.plandump.PlanJSONDumpGenerator;
 import org.apache.flink.optimizer.plantranslate.JobGraphGenerator;
 import org.apache.flink.runtime.akka.AkkaUtils;
 import org.apache.flink.runtime.client.JobStatusMessage;
+import org.apache.flink.runtime.clusterframework.ApplicationStatus;
 import org.apache.flink.runtime.concurrent.Executors;
 import org.apache.flink.runtime.highavailability.HighAvailabilityServices;
 import org.apache.flink.runtime.highavailability.HighAvailabilityServicesUtils;
@@ -99,6 +101,9 @@ public abstract class ClusterClient<T> {
 	/** Switch for blocking/detached job submission of the client. */
 	private boolean detachedJobSubmission = false;
 
+	/** The termination future with status and diagnostics. */
+	private CompletableFuture<Tuple2<ApplicationStatus, String>> terminationFuture;
+
 	// ------------------------------------------------------------------------
 	//                            Construction
 	// ------------------------------------------------------------------------
@@ -142,6 +147,7 @@ public abstract class ClusterClient<T> {
 
 		this.highAvailabilityServices = Preconditions.checkNotNull(highAvailabilityServices);
 		this.sharedHaServices = sharedHaServices;
+		this.terminationFuture = new CompletableFuture<>();
 	}
 
 	// ------------------------------------------------------------------------
@@ -335,7 +341,12 @@ public abstract class ClusterClient<T> {
 			List<URL> libraries, List<URL> classpaths, ClassLoader classLoader, SavepointRestoreSettings savepointSettings)
 			throws ProgramInvocationException {
 		JobGraph job = getJobGraph(flinkConfig, compiledPlan, libraries, classpaths, savepointSettings);
-		return submitJob(job, classLoader);
+		try {
+			return submitJob(job, classLoader);
+		} catch (ProgramInvocationException e) {
+			shutDownCluster();
+			throw e;
+		}
 	}
 
 	/**
@@ -508,7 +519,11 @@ public abstract class ClusterClient<T> {
 	public abstract JobSubmissionResult submitJob(JobGraph jobGraph, ClassLoader classLoader)
 		throws ProgramInvocationException;
 
-	public void shutDownCluster() {
+	public void shutDownCluster(ApplicationStatus status, String diagnostics) {
 		throw new UnsupportedOperationException("The " + getClass().getSimpleName() + " does not support shutDownCluster.");
+	}
+
+	public CompletableFuture<Tuple2<ApplicationStatus, String>> getTerminationFuture() {
+		return terminationFuture;
 	}
 }

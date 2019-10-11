@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.entrypoint.component;
 
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
 import org.apache.flink.runtime.concurrent.FutureUtils;
 import org.apache.flink.runtime.dispatcher.Dispatcher;
@@ -63,7 +64,7 @@ public class DispatcherResourceManagerComponent<T extends Dispatcher> implements
 
 	private final CompletableFuture<Void> terminationFuture;
 
-	private final CompletableFuture<ApplicationStatus> shutDownFuture;
+	private final CompletableFuture<Tuple2<ApplicationStatus, String>> shutDownFuture;
 
 	private final AtomicBoolean isRunning = new AtomicBoolean(true);
 
@@ -92,23 +93,23 @@ public class DispatcherResourceManagerComponent<T extends Dispatcher> implements
 				if (throwable != null) {
 					shutDownFuture.completeExceptionally(throwable);
 				} else {
-					shutDownFuture.complete(ApplicationStatus.SUCCEEDED);
+					shutDownFuture.complete(Tuple2.of(ApplicationStatus.SUCCEEDED, null));
 				}
 			});
 
 		dispatcher
-			.getTerminationFuture()
+			.getTerminationStatusFuture()
 			.whenComplete(
-				(aVoid, throwable) -> {
+				(statusDiagnostics, throwable) -> {
 					if (throwable != null) {
 						shutDownFuture.completeExceptionally(throwable);
 					} else {
-						shutDownFuture.complete(ApplicationStatus.SUCCEEDED);
+						shutDownFuture.complete(statusDiagnostics);
 					}
 				});
 	}
 
-	public final CompletableFuture<ApplicationStatus> getShutDownFuture() {
+	public final CompletableFuture<Tuple2<ApplicationStatus, String>> getShutDownFuture() {
 		return shutDownFuture;
 	}
 
