@@ -98,15 +98,8 @@ public class DispatcherResourceManagerComponent<T extends Dispatcher> implements
 			});
 
 		dispatcher
-			.getTerminationStatusFuture()
-			.whenComplete(
-				(statusDiagnostics, throwable) -> {
-					if (throwable != null) {
-						shutDownFuture.completeExceptionally(throwable);
-					} else {
-						shutDownFuture.complete(statusDiagnostics);
-					}
-				});
+			.getJobTerminationFuture()
+			.thenAccept(shutDownFuture::complete);
 	}
 
 	public final CompletableFuture<Tuple2<ApplicationStatus, String>> getShutDownFuture() {

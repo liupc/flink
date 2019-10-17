@@ -132,7 +132,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId> impleme
 
 	private final Map<JobID, CompletableFuture<Void>> jobManagerTerminationFutures;
 
-	private final CompletableFuture<Tuple2<ApplicationStatus, String>> terminationStatusFuture;
+	protected CompletableFuture<Tuple2<ApplicationStatus, String>> jobTerminationFuture;
 
 	private CompletableFuture<Void> recoveryOperation = CompletableFuture.completedFuture(null);
 
@@ -181,7 +181,7 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId> impleme
 
 		this.jobManagerTerminationFutures = new HashMap<>(2);
 
-		this.terminationStatusFuture = new CompletableFuture<>();
+		this.jobTerminationFuture = new CompletableFuture<>();
 	}
 
 	//------------------------------------------------------
@@ -225,7 +225,6 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId> impleme
 		log.info("Stopping dispatcher {}.", getAddress());
 
 		final CompletableFuture<Void> allJobManagerRunnersTerminationFuture = terminateJobManagerRunnersAndGetTerminationFuture();
-
 		return FutureUtils.runAfterwards(
 			allJobManagerRunnersTerminationFuture,
 			() -> {
@@ -615,15 +614,13 @@ public abstract class Dispatcher extends FencedRpcEndpoint<DispatcherId> impleme
 
 	@Override
 	public CompletableFuture<Acknowledge> shutDownCluster(ApplicationStatus status, String diagnostics) {
-		CompletableFuture<Void> terminationFuture = closeAsync();
-		terminationFuture.whenComplete((aVoid, throwable) -> {
-			terminationStatusFuture.complete(Tuple2.of(status, diagnostics));
-		});
+		closeAsync().thenRun(() -> jobTerminationFuture.complete(Tuple2.of(status, diagnostics)));
+//		jobTerminationFuture.complete(Tuple2.of(status, diagnostics));
 		return CompletableFuture.completedFuture(Acknowledge.get());
 	}
 
-	public CompletableFuture<Tuple2<ApplicationStatus, String>> getTerminationStatusFuture() {
-		return terminationStatusFuture;
+	public CompletableFuture<Tuple2<ApplicationStatus, String>> getJobTerminationFuture() {
+		return jobTerminationFuture;
 	}
 
 	/**

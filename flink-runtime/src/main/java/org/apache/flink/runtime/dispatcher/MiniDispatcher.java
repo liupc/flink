@@ -20,6 +20,7 @@ package org.apache.flink.runtime.dispatcher;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.blob.BlobServer;
 import org.apache.flink.runtime.clusterframework.ApplicationStatus;
@@ -36,6 +37,7 @@ import org.apache.flink.runtime.resourcemanager.ResourceManagerGateway;
 import org.apache.flink.runtime.rpc.FatalErrorHandler;
 import org.apache.flink.runtime.rpc.RpcService;
 import org.apache.flink.runtime.webmonitor.retriever.GatewayRetriever;
+import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.FlinkException;
 
 import javax.annotation.Nullable;
@@ -55,8 +57,6 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public class MiniDispatcher extends Dispatcher {
 
 	private final JobClusterEntrypoint.ExecutionMode executionMode;
-
-	private final CompletableFuture<ApplicationStatus> jobTerminationFuture;
 
 	public MiniDispatcher(
 			RpcService rpcService,
@@ -94,7 +94,7 @@ public class MiniDispatcher extends Dispatcher {
 		this.jobTerminationFuture = new CompletableFuture<>();
 	}
 
-	public CompletableFuture<ApplicationStatus> getJobTerminationFuture() {
+	public CompletableFuture<Tuple2<ApplicationStatus, String>> getJobTerminationFuture() {
 		return jobTerminationFuture;
 	}
 
@@ -123,8 +123,9 @@ public class MiniDispatcher extends Dispatcher {
 			jobResultFuture.thenAccept((JobResult result) -> {
 				ApplicationStatus status = result.getSerializedThrowable().isPresent() ?
 						ApplicationStatus.FAILED : ApplicationStatus.SUCCEEDED;
-
-				jobTerminationFuture.complete(status);
+				String diagnostics = result.getSerializedThrowable().isPresent() ?
+					ExceptionUtils.stringifyException(result.getSerializedThrowable().get()) : "";
+				jobTerminationFuture.complete(Tuple2.of(status, diagnostics));
 			});
 		}
 
@@ -137,7 +138,9 @@ public class MiniDispatcher extends Dispatcher {
 
 		if (executionMode == ClusterEntrypoint.ExecutionMode.DETACHED) {
 			// shut down since we don't have to wait for the execution result retrieval
-			jobTerminationFuture.complete(ApplicationStatus.fromJobStatus(archivedExecutionGraph.getState()));
+			jobTerminationFuture.complete(
+				Tuple2.of(ApplicationStatus.fromJobStatus(archivedExecutionGraph.getState()),
+				archivedExecutionGraph.getFailureInfo().getExceptionAsString()));
 		}
 	}
 
@@ -146,6 +149,6 @@ public class MiniDispatcher extends Dispatcher {
 		super.jobNotFinished(jobId);
 
 		// shut down since we have done our job
-		jobTerminationFuture.complete(ApplicationStatus.UNKNOWN);
+		jobTerminationFuture.complete(Tuple2.of(ApplicationStatus.UNKNOWN, null));
 	}
 }

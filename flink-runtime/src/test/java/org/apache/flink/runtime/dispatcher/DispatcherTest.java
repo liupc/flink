@@ -30,6 +30,7 @@ import org.apache.flink.runtime.checkpoint.Checkpoints;
 import org.apache.flink.runtime.checkpoint.StandaloneCheckpointRecoveryFactory;
 import org.apache.flink.runtime.checkpoint.savepoint.SavepointV2;
 import org.apache.flink.runtime.client.JobSubmissionException;
+import org.apache.flink.runtime.clusterframework.ApplicationStatus;
 import org.apache.flink.runtime.executiongraph.ArchivedExecutionGraph;
 import org.apache.flink.runtime.executiongraph.ErrorInfo;
 import org.apache.flink.runtime.heartbeat.HeartbeatServices;
@@ -762,7 +763,7 @@ public class DispatcherTest extends TestLogger {
 		dispatcherLeaderElectionService.isLeader(UUID.randomUUID()).get();
 		final DispatcherGateway dispatcherGateway = dispatcher.getSelfGateway(DispatcherGateway.class);
 
-		dispatcherGateway.shutDownCluster().get();
+		dispatcherGateway.shutDownCluster(ApplicationStatus.SUCCEEDED, null).get();
 
 		dispatcher.getTerminationFuture().get();
 	}
